@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>宣传物料敏感词检索工具</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="page-header">
+        <div class="header-copy">
+          <h1>宣传物料敏感词检索工具</h1>
+          <p class="page-description">
+            帮你快速识别文案中的潜在风险表达，并给出更稳妥的推荐说法。
+          </p>
+        </div>
+      </header>
+
+      <main class="layout-grid">
+        <section class="column-left">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>文案检测</h2>
+                <p>粘贴需要检测的文案内容，系统会自动识别潜在风险表达。</p>
+              </div>
+            </div>
+
+            <label class="input-label" for="contentInput">粘贴需要检测的文案内容</label>
+            <div class="editor-shell">
+              <div class="editor-head">
+                <span class="editor-badge">文本工作区</span>
+                <span class="editor-meta">支持直接粘贴长文案，适合海报、落地页、活动文案快速自检</span>
+              </div>
+              <textarea
+                id="contentInput"
+                class="content-input"
+                placeholder="例如：课程介绍、活动海报文案、招生宣传语等"
+              ></textarea>
+            </div>
+
+            <div class="action-row">
+              <button id="detectButton" class="button button-primary">开始检测</button>
+              <button id="clearButton" class="button button-secondary">清空内容</button>
+            </div>
+          </section>
+
+          <section class="panel panel-preview">
+            <div class="section-title-row preview-header">
+              <div>
+                <h2>检测结果预览</h2>
+                <p class="panel-subcopy">命中的内容会在原文中清晰标记，方便你快速定位并调整。</p>
+              </div>
+              <div class="preview-actions">
+                <span id="previewHint" class="section-hint">暂无检测结果</span>
+                <button id="replaceButton" class="button button-secondary button-replace" disabled>
+                  一键替换为推荐表达
+                </button>
+              </div>
+            </div>
+            <div id="previewOutput" class="preview-output preview-empty">
+              检测后会在这里按风险等级高亮显示原文内容。
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>词库管理</h2>
+                <p>当前使用词库会展示在这里，也可以随时上传新的 CSV 词库替换。</p>
+              </div>
+            </div>
+
+            <div class="lexicon-card">
+              <div class="lexicon-status">
+                <span class="lexicon-label">当前使用词库</span>
+                <strong id="lexiconName">默认词库</strong>
+                <small id="lexiconMeta">正在准备词库...</small>
+              </div>
+              <label class="button button-secondary button-upload" for="csvUpload">上传 CSV 词库</label>
+              <input id="csvUpload" type="file" accept=".csv,text/csv" hidden />
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-title-row">
+              <div>
+                <h2>历史记录</h2>
+                <p class="panel-subcopy">最近的检测记录会自动保存在当前浏览器里，方便回看和继续修改。</p>
+              </div>
+              <button id="clearHistoryButton" class="text-button">清空历史</button>
+            </div>
+            <div id="historyList" class="history-list">
+              <div class="empty-state">暂无历史记录</div>
+            </div>
+          </section>
+        </section>
+
+        <aside class="column-right">
+          <section class="panel panel-highlighted">
+            <div class="risk-overview" id="riskCard">
+              <div class="risk-overview-bar" id="riskAccent"></div>
+              <div class="risk-overview-content">
+                <span class="section-kicker">风险总览</span>
+                <div class="risk-overview-top">
+                  <span id="riskBadge" class="risk-pill risk-low">低风险</span>
+                </div>
+                <p id="riskText" class="risk-text">还没有检测结果，先输入文案试试看。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header panel-header-tight">
+              <div>
+                <h2>命中统计</h2>
+              </div>
+            </div>
+            <div class="stat-grid">
+              <div class="stat-card">
+                <span class="stat-label">命中总数</span>
+                <strong id="hitCount">0</strong>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">高风险</span>
+                <strong id="highCount">0</strong>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">中风险</span>
+                <strong id="mediumCount">0</strong>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">低风险</span>
+                <strong id="lowCount">0</strong>
+              </div>
+            </div>
+            <div id="categorySummary" class="category-summary">分类分布：暂无数据</div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header panel-header-tight">
+              <div>
+                <h2>敏感词明细</h2>
+                <p>按命中顺序展示具体风险词及推荐表达。</p>
+              </div>
+            </div>
+            <div id="resultList" class="result-list">
+              <div class="empty-state">完成检测后，这里会显示敏感词、分类、风险等级、替换建议和备注。</div>
+            </div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
