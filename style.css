@@ -232,7 +232,8 @@ h1 {
 .result-head,
 .history-head,
 .tag-row,
-.lexicon-card {
+.lexicon-card,
+.lexicon-actions {
   display: flex;
   gap: 12px;
   align-items: center;
@@ -250,6 +251,11 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 18px;
+}
+
+.lexicon-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .lexicon-status {
@@ -324,6 +330,17 @@ h1 {
 
 .button-upload {
   white-space: nowrap;
+}
+
+.button-ghost {
+  background: rgba(79, 124, 243, 0.08);
+  color: var(--primary-strong);
+  border-color: rgba(79, 124, 243, 0.14);
+}
+
+.button-ghost:hover {
+  background: rgba(79, 124, 243, 0.14);
+  border-color: rgba(79, 124, 243, 0.24);
 }
 
 .text-button {
@@ -594,6 +611,7 @@ h1 {
   .section-title-row,
   .panel-header,
   .lexicon-card,
+  .lexicon-actions,
   .editor-head,
   .result-head,
   .history-head {
