@@ -4,6 +4,8 @@ const STORAGE_KEYS = {
   history: "sensitiveCheckHistory",
 };
 
+const REQUIRED_CSV_HEADERS = ["word", "category", "risk_level", "replace", "note"];
+
 const DEFAULT_CSV_FALLBACK = `word,category,risk_level,replace,note
 提分,效果承诺,高,学习进步/能力提升/素养提升,涉及成绩承诺
 保证提分,效果承诺,高,助力成长/提供支持,绝对承诺违规
@@ -51,7 +53,7 @@ NO.1,排名词,高,优选品牌,
 专家推荐,权威背书,高,专业支持,
 权威认证,权威背书,中,规范体系,
 官方指定,权威背书,高,标准参考,
-限今日,促销用语,高,限时开放（需具体时间）, 
+限今日,促销用语,高,限时开放（需具体时间）,
 最低价,促销用语,高,优惠方案,
 免费领,促销用语,高,体验机会,
 0元,促销用语,中,限时体验,
@@ -173,7 +175,7 @@ function updateLexiconStatus() {
 function parseCsv(csvText) {
   const normalizedText = csvText.replace(/^\uFEFF/, "").trim();
   if (!normalizedText) {
-    return [];
+    throw new Error("CSV 文件是空的，请先填写内容后再上传。");
   }
 
   const rows = normalizedText
@@ -182,10 +184,12 @@ function parseCsv(csvText) {
     .filter(Boolean);
 
   if (rows.length <= 1) {
-    return [];
+    throw new Error("CSV 只有表头，没有可用的数据行，请至少填写一行词库内容。");
   }
 
   const headers = rows[0].split(",").map((item) => item.trim());
+  validateCsvHeaders(headers);
+
   return rows
     .slice(1)
     .map((row) => {
@@ -203,6 +207,25 @@ function parseCsv(csvText) {
       };
     })
     .filter((item) => item.word);
+}
+
+function validateCsvHeaders(headers) {
+  const missingHeaders = REQUIRED_CSV_HEADERS.filter((header) => !headers.includes(header));
+  if (missingHeaders.length) {
+    throw new Error(
+      `CSV 缺少必要字段：${missingHeaders.join("、")}。请使用模板中的表头顺序。`
+    );
+  }
+
+  const headerMismatch = REQUIRED_CSV_HEADERS.some(
+    (header, index) => headers[index] !== header
+  );
+
+  if (headerMismatch) {
+    throw new Error(
+      "CSV 表头顺序不正确，请按模板顺序填写：word,category,risk_level,replace,note。"
+    );
+  }
 }
 
 function normalizeRiskLevel(level) {
@@ -264,10 +287,14 @@ async function handleCsvUpload(event) {
 
   try {
     const csvText = await file.text();
+    if (!csvText.trim()) {
+      throw new Error("CSV 文件是空的，请先填写内容后再上传。");
+    }
+
     const parsed = parseCsv(csvText);
 
     if (!parsed.length) {
-      throw new Error("CSV 内容为空，或字段格式不正确");
+      throw new Error("CSV 中没有识别到有效词条，请检查每一行是否都填写了敏感词。");
     }
 
     currentLexicon = parsed;
@@ -278,7 +305,7 @@ async function handleCsvUpload(event) {
     updateLexiconStatus();
     alert("词库上传成功，之后的检测会使用新的词库。");
   } catch (error) {
-    alert("词库上传失败，请确认字段顺序为 word,category,risk_level,replace,note。");
+    alert(`词库上传失败：${error.message}`);
   } finally {
     event.target.value = "";
   }
