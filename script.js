@@ -1,6 +1,8 @@
 const STORAGE_KEYS = {
-  lexiconCsv: "sensitiveLexiconCsv",
-  lexiconName: "sensitiveLexiconName",
+  uploadedLexiconCsv: "sensitiveUploadedLexiconCsv",
+  uploadedLexiconName: "sensitiveUploadedLexiconName",
+  legacyLexiconCsv: "sensitiveLexiconCsv",
+  legacyLexiconName: "sensitiveLexiconName",
   history: "sensitiveCheckHistory",
 };
 
@@ -53,7 +55,7 @@ NO.1,排名词,高,优选品牌,
 专家推荐,权威背书,高,专业支持,
 权威认证,权威背书,中,规范体系,
 官方指定,权威背书,高,标准参考,
-限今日,促销用语,高,限时开放（需具体时间）,
+限今日,促销用语,高,限时开放（需具体时间）, 
 最低价,促销用语,高,优惠方案,
 免费领,促销用语,高,体验机会,
 0元,促销用语,中,限时体验,
@@ -120,6 +122,11 @@ let currentLexicon = [];
 let currentLexiconSource = "默认词库";
 let currentLexiconMeta = "";
 let lastMatches = [];
+let baseLexicon = [];
+let baseLexiconSource = "默认词库";
+let baseLexiconMeta = "";
+let uploadedLexicon = [];
+let uploadedLexiconName = "";
 
 async function initialize() {
   bindEvents();
@@ -138,38 +145,116 @@ function bindEvents() {
 }
 
 async function loadLexicon() {
-  const savedCsv = localStorage.getItem(STORAGE_KEYS.lexiconCsv);
-  const savedName = localStorage.getItem(STORAGE_KEYS.lexiconName);
-
-  if (savedCsv) {
-    currentLexicon = parseCsv(savedCsv);
-    currentLexiconSource = savedName || "本地已保存词库";
-    currentLexiconMeta = `共 ${currentLexicon.length} 条词库，已从当前浏览器恢复`;
-    updateLexiconStatus();
-    return;
-  }
-
   try {
     const response = await fetch("./敏感词词库.csv");
     if (!response.ok) {
       throw new Error("默认 CSV 读取失败");
     }
     const csvText = await response.text();
-    currentLexicon = parseCsv(csvText);
-    currentLexiconSource = "默认词库";
-    currentLexiconMeta = `共 ${currentLexicon.length} 条词库，来自项目内 CSV 文件`;
+    baseLexicon = parseCsv(csvText);
+    baseLexiconSource = "默认词库";
+    baseLexiconMeta = `共 ${baseLexicon.length} 条词库，来自项目内 CSV 文件`;
   } catch (error) {
-    currentLexicon = parseCsv(DEFAULT_CSV_FALLBACK);
-    currentLexiconSource = "默认词库（内置兜底）";
-    currentLexiconMeta = "当前浏览器限制了本地 CSV 读取，已自动切换为内置词库";
+    baseLexicon = parseCsv(DEFAULT_CSV_FALLBACK);
+    baseLexiconSource = "默认词库（内置兜底）";
+    baseLexiconMeta = "当前浏览器限制了本地 CSV 读取，已自动切换为内置词库";
   }
 
-  updateLexiconStatus();
+  hydrateUploadedLexicon();
+  rebuildCurrentLexicon();
 }
 
 function updateLexiconStatus() {
   elements.lexiconName.textContent = currentLexiconSource;
   elements.lexiconMeta.textContent = currentLexiconMeta;
+}
+
+function hydrateUploadedLexicon() {
+  const savedCsv =
+    localStorage.getItem(STORAGE_KEYS.uploadedLexiconCsv) ||
+    localStorage.getItem(STORAGE_KEYS.legacyLexiconCsv);
+  const savedName =
+    localStorage.getItem(STORAGE_KEYS.uploadedLexiconName) ||
+    localStorage.getItem(STORAGE_KEYS.legacyLexiconName);
+
+  if (!savedCsv) {
+    uploadedLexicon = [];
+    uploadedLexiconName = "";
+    return;
+  }
+
+  try {
+    uploadedLexicon = parseCsv(savedCsv);
+    uploadedLexiconName = savedName || "本地补充词库";
+    migrateLegacyLexiconStorage(savedCsv, uploadedLexiconName);
+  } catch (error) {
+    uploadedLexicon = [];
+    uploadedLexiconName = "";
+    clearUploadedLexiconStorage();
+  }
+}
+
+function rebuildCurrentLexicon() {
+  currentLexicon = mergeLexiconEntries(baseLexicon, uploadedLexicon);
+
+  if (uploadedLexicon.length) {
+    currentLexiconSource = "默认词库 + 补充词库";
+    currentLexiconMeta =
+      `默认词库 ${baseLexicon.length} 条，补充词条 ${uploadedLexicon.length} 条` +
+      `（最近上传：${uploadedLexiconName}），当前生效 ${currentLexicon.length} 条`;
+  } else {
+    currentLexiconSource = baseLexiconSource;
+    currentLexiconMeta = `${baseLexiconMeta}，你也可以继续上传 CSV 词库补充使用`;
+  }
+
+  updateLexiconStatus();
+}
+
+function mergeLexiconEntries(baseEntries, extraEntries) {
+  const mergedMap = new Map();
+
+  baseEntries.forEach((entry) => {
+    mergedMap.set(createLexiconKey(entry.word), entry);
+  });
+
+  extraEntries.forEach((entry) => {
+    mergedMap.set(createLexiconKey(entry.word), entry);
+  });
+
+  return Array.from(mergedMap.values());
+}
+
+function createLexiconKey(word) {
+  return String(word || "").trim();
+}
+
+function migrateLegacyLexiconStorage(csvText, name) {
+  localStorage.setItem(STORAGE_KEYS.uploadedLexiconCsv, csvText);
+  localStorage.setItem(STORAGE_KEYS.uploadedLexiconName, name);
+  localStorage.removeItem(STORAGE_KEYS.legacyLexiconCsv);
+  localStorage.removeItem(STORAGE_KEYS.legacyLexiconName);
+}
+
+function clearUploadedLexiconStorage() {
+  localStorage.removeItem(STORAGE_KEYS.uploadedLexiconCsv);
+  localStorage.removeItem(STORAGE_KEYS.uploadedLexiconName);
+  localStorage.removeItem(STORAGE_KEYS.legacyLexiconCsv);
+  localStorage.removeItem(STORAGE_KEYS.legacyLexiconName);
+}
+
+function serializeLexicon(entries) {
+  const header = REQUIRED_CSV_HEADERS.join(",");
+  const rows = entries.map((entry) =>
+    [
+      entry.word || "",
+      entry.category || "",
+      entry.riskLevel || "",
+      entry.replace || "",
+      entry.note || "",
+    ].join(",")
+  );
+
+  return [header, ...rows].join("\n");
 }
 
 function parseCsv(csvText) {
@@ -297,13 +382,14 @@ async function handleCsvUpload(event) {
       throw new Error("CSV 中没有识别到有效词条，请检查每一行是否都填写了敏感词。");
     }
 
-    currentLexicon = parsed;
-    currentLexiconSource = file.name;
-    currentLexiconMeta = `共 ${currentLexicon.length} 条词库，来自你刚上传的 CSV`;
-    localStorage.setItem(STORAGE_KEYS.lexiconCsv, csvText);
-    localStorage.setItem(STORAGE_KEYS.lexiconName, file.name);
-    updateLexiconStatus();
-    alert("词库上传成功，之后的检测会使用新的词库。");
+    uploadedLexicon = mergeLexiconEntries(uploadedLexicon, parsed);
+    uploadedLexiconName = file.name;
+    localStorage.setItem(STORAGE_KEYS.uploadedLexiconCsv, serializeLexicon(uploadedLexicon));
+    localStorage.setItem(STORAGE_KEYS.uploadedLexiconName, file.name);
+    localStorage.removeItem(STORAGE_KEYS.legacyLexiconCsv);
+    localStorage.removeItem(STORAGE_KEYS.legacyLexiconName);
+    rebuildCurrentLexicon();
+    alert("词库上传成功，已在现有词库基础上继续补充；如果有同名词条，会优先使用你刚上传的版本。");
   } catch (error) {
     alert(`词库上传失败：${error.message}`);
   } finally {
